@@ -6,7 +6,7 @@ sys.path.append('./')
 from utils.token_price import get_token_price
 
 
-def parce_df_address_group(address):
+def parce_df_address_group(address: str):
     if address.split('-')[0] == 'onchain':
         return address.split('-')[0] + '-' + address.split('-')[1]
     else:
