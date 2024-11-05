@@ -2,6 +2,9 @@ import os
 from enum import Enum
 
 from loguru import logger
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Chain(Enum):
@@ -13,6 +16,7 @@ class Chain(Enum):
     AVAX = "avax"
     MANTLE = "mnt"
     SOL = "sol"
+    SCROLL = "scroll"
     UNKNOWN = "unknown"
 
     def __hash__(self):
@@ -37,8 +41,6 @@ class Chain(Enum):
     
     @property
     def url(self) -> str:
-        if not self.valid:
-            raise ValueError
         env_name = '{}_CHAIN_URL'.format(self.value.upper())
         chain_url = os.getenv(env_name, '')
         if not chain_url:
@@ -76,4 +78,6 @@ def chain_to_id(chain: Chain) -> str:
 
 
 if __name__ == "__main__":
-    print(chain_to_id(Chain.ETH))
+    c = Chain.from_string('eth')
+    print(chain_to_id(c))
+    print(c.url)

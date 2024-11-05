@@ -1,4 +1,16 @@
-# web3-analytic
+# web3-analytics
 
-Start to Run:
-eport $PYTHONPAH = $(pwd)
+## Setup $PYTHONPATH
+Linux / Mac 
+```shell
+PYTHONPATH=${PYTHONPATH}:${PWD}
+```
+Windows
+```shell
+$env:PYTHONPATH = "${env:PYTHONPATH};$PWD"
+```
+
+## Add Environment Variables
+Add Following Environment Variables to `.env` file
+1. chain RPC Url
+2. DEX / CEX API Tokens
