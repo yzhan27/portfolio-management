@@ -38,9 +38,20 @@ class Transaction(object):
             return gas_fee_eth
         else:
             return gas_fee_wei
+    
+
+    @property
+    def logs(self):
+        """
+        Return: All logs of the transactions
+        """
+        receipt = self.get_receipt()
+        logs = receipt.get('logs',[])
+        return logs
 
 
 if __name__ == "__main__":
-    txn_hash = '0x53976b0b97ff56bda345f40d177f761c12e916f103718e38266aab9b79e53900'
+    txn_hash = '0x07a582bdfca3c12da00572252e86b4b343201f37b3c9741d9ac99f195e8d3d1d'
     txn = Transaction(txn_hash)
     print(txn.eth_gas_fee)
+    print(txn.logs)
