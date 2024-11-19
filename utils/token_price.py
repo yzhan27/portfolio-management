@@ -72,7 +72,7 @@ def get_token_price(symbol):
             price_function = globals()[f'get_{exchange}_price']
             price = price_function(symbol)
             logger.info(f"return {exchange} price - {symbol}:{price}")
-            return price
+            return float(price)
         except Exception as e:
             logger.error(f"Error accessing {exchange}: {symbol} {e}")
 
@@ -173,27 +173,6 @@ def get_token_spot_candlesticks(symbol, interval='1d', limit=100):
                 return df
         except Exception as e:
             logger.error(f"Error accessing {exchange}: {e}")
-
-
-def get_token_based_trend(quote_token, base_token='btc', interval='1d', limit=100):
-    token_df = get_token_spot_candlesticks(quote_token, interval=interval, limit=limit)
-    base_df = get_token_spot_candlesticks(base_token, interval=interval, limit=limit)
-
-    for col in ['open', 'high', 'low', 'close']:
-        token_df[col] = token_df[col].astype(float)
-        base_df[col] = base_df[col].astype(float)
-
-    token_degree = 0
-    while np.floor(token_df['open'] * pow(10, token_degree)).max() == 0:
-        token_degree += 1
-
-    df = pd.merge(token_df, base_df, on='timestamp', how='inner')
-    for col in ['open', 'high', 'low', 'close']:
-        df[col] = df[col + '_x'] / df[col + '_y'] * pow(10, token_degree + 5)
-    df.set_index('timestamp', inplace=True)
-    df = df.loc[:, ['open', 'high', 'low', 'close']]
-
-    return df
 
 
 if __name__ == "__main__":
