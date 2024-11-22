@@ -51,7 +51,7 @@ def get_spot_candlesticks(
         params['before'] = str(1000 * int(start_time.timestamp()))
         params['after'] = str(1000 * int(end_time.timestamp()))
     if limit is not None:
-        params['limit'] = 1000 if limit > 1000 or limit < 0 else limit
+        params['limit'] = 100 if limit > 100 or limit < 0 else limit
     logger.info(params)
     try:
         response = requests.get(url, params=params)
