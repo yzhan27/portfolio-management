@@ -23,16 +23,18 @@ def get_current_price(token_name: str):
 
 
 def get_spot_candlesticks(
-        token_name: str,
-        interval='1D',
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        limit: Optional[int] = None
+    token_name: str,
+    interval='1D',
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    limit: Optional[int] = None
 ):
     """
     https://www.okx.com/docs-v5/en/?python#public-data-rest-api-get-index-candlesticks-history
-    @param token_name: crypto token name, "BTC" "ETH" etc
+    @param token_name: crypto token name, "BTC" "ETH" etc, token-usdt pair by default
     @param interval: default 1m, [1m/3m/5m/15m/30m/1H/2H/4H],HKT：[6H/12H/1D/1W/1M],[/6Hutc/12Hutc/1Dutc/1Wutc/1Mutc]
+    @param end_time: Optional, end_time of spot candlesticks
+    @param start_time: Optional, start_time of spot candlesticks
     @param limit: default 100, max 100
     @return: dataframe of recent historical price
     """
