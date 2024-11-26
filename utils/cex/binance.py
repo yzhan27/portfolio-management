@@ -15,13 +15,12 @@ def get_current_price(token_name: str):
 
     api_url = 'https://api.binance.com/api/v3/ticker/price'
     params = {'symbol': symbol}
-
-    try:
-        response = requests.get(api_url, params=params)
-        data = response.json()
+    response = requests.get(api_url, params=params)
+    data = response.json()
+    if data.get('code',0) == 0:
         return data['price']
-    except requests.exceptions.HTTPError as e:
-        logger.error(response.content)
+    else:
+        raise Exception(data['msg'])
 
 
 def get_spot_candlesticks(
@@ -53,24 +52,23 @@ def get_spot_candlesticks(
     if limit is not None:
         params['limit'] = 1000 if limit > 1000 or limit < 0 else limit
 
-    try:
-        logger.info(params)
-        response = requests.get(api_url, params=params)
-        data = response.json()
+    response = requests.get(api_url, params=params)
+    data = response.json()
+    if data['msg'] is not None:
+        logger.error(data['msg'])
+        raise Exception(data['msg'])
 
-        # 解析响应数据为DataFrame
-        df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time',
-                                         'quote_asset_volume', 'trades', 'taker_buy_base', 'taker_buy_quote', 'ignore'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        return df
-    except Exception as e:
-        logger.error(f"Error accessing binance: {e}")
+    # 解析响应数据为DataFrame
+    df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time',
+                                     'quote_asset_volume', 'trades', 'taker_buy_base', 'taker_buy_quote', 'ignore'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+    return df
 
 
 if __name__ == "__main__":
-    print(get_current_price("BTCUSDT"))
+    print(get_current_price("gpt"))
     print(get_spot_candlesticks(
-        "BTCUSDT",
+        "gpt",
         start_time=datetime(2022, 11, 1),
         end_time=datetime(2022, 11, 10)
     ))

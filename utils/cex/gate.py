@@ -14,20 +14,20 @@ def get_current_price(token_name: str):
     symbol = token_name if token_name[-5:] == '_usdt' else token_name + '_usdt'
 
     url = f'https://data.gateapi.io/api2/1/ticker/{symbol}'
-    try:
-        logger.info(url)
-        response = requests.get(url)
-        return response.json()['last']
-    except requests.exceptions.HTTPError as e:
-        logger.error(e)
+    response = requests.get(url)
+    data = response.json()
+    if data.get('code', 0) == 0:
+        return data['last']
+    else:
+        raise Exception(data['message'])
 
 
 def get_spot_candlesticks(
-    token_name: str,
-    interval='1D',
-    start_time: Optional[datetime] = None,
-    end_time: Optional[datetime] = None,
-    limit: Optional[int] = None
+        token_name: str,
+        interval='1D',
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: Optional[int] = None
 ):
     """
     https://www.gate.io/docs/developers/apiv4/zh_CN/#%E5%B8%82%E5%9C%BA-k-%E7%BA%BF%E5%9B%BE
@@ -52,23 +52,23 @@ def get_spot_candlesticks(
         params['to'] = int(end_time.timestamp())
     if limit is not None:
         params['limit'] = 1000 if limit > 1000 or limit < 0 else limit
-
-    try:
-        response = requests.request('GET', url, headers=headers, params=params)
-        data = response.json()
-        df = pd.DataFrame(data, columns=[
-            'timestamp', 'quote_volume', 'close', 'high', 'low', 'open', 'base_volume', 'confirmed'
-        ])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-        return df
-    except Exception as e:
-        logger.error(f"Error accessing gate: {e}")
+    # request api
+    response = requests.request('GET', url, headers=headers, params=params)
+    data = response.json()
+    # parse data
+    if isinstance(data, dict):
+        raise Exception(data['message'])
+    df = pd.DataFrame(data, columns=[
+        'timestamp', 'quote_volume', 'close', 'high', 'low', 'open', 'base_volume', 'confirmed'
+    ])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+    return df
 
 
 if __name__ == "__main__":
-    print(get_current_price("BTC"))
+    print(get_current_price("navx"))
     print(get_spot_candlesticks(
-        "BTC",
+        "navx",
         interval='1d',
         start_time=datetime(2024, 11, 1),
         end_time=datetime(2024, 11, 10)

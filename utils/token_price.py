@@ -1,47 +1,65 @@
+import os
+import inspect
 import requests
-import numpy as np
-import pandas as pd
+import importlib
+from enum import Enum
 from loguru import logger
+from functools import wraps
+from typing import Optional
+from datetime import datetime
 
 
-def get_binance_price(symbol):
-    symbol = symbol.upper()
-    symbol = symbol if symbol[-4:] == "USDT" else symbol + "USDT"
-
-    api_url = 'https://api.binance.com/api/v3/ticker/price'
-    params = {'symbol': symbol}
-
-    try:
-        response = requests.get(api_url, params=params)
-        data = response.json()
-        return data['price']
-    except requests.exceptions.HTTPError as e:
-        logger.error(response.content)
+class PriceSource(Enum):
+    BINANCE = "binance"
+    OKX = "okx"
+    GATE = "gate"
 
 
-def get_okx_price(symbol):
-    symbol = symbol.upper()
-    symbol = symbol[:-4] if symbol[-4:] == "USDT" else symbol
+def iter_cex(fn):
+    @wraps(fn)
+    def run(*args, **kwargs):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        cex_dir = os.path.join(current_dir, 'cex')
 
-    url = f"https://www.okx.com/api/v5/market/ticker?instId={symbol}-USDT"
-    try:
-        response = requests.get(url)
-        data = response.json()
-        return data["data"][0]["last"]
-    except requests.exceptions.HTTPError as e:
-        logger.error(response.content)
+        for s in PriceSource:
+            module_name = s.value
+            file_path = os.path.join(cex_dir, f"{module_name}.py")
+            if os.path.exists(file_path):
+                try:
+                    module_path = f'cex.{module_name}'
+                    module = importlib.import_module(module_path)
+                    kwargs['cex'] = module
+                    return fn(*args, **kwargs)
+                except Exception as e:
+                    logger.error(f"Error accessing {module_name}: {fn.__name__} for token '{args[0]}':{e}")
+    return run
 
 
-def get_gate_price(symbol):
-    symbol = symbol.lower()
-    symbol = symbol if symbol[-5:] == '_usdt' else symbol + '_usdt'
+@iter_cex
+def get_token_price(token_name: str, **kwargs):
+    cex = kwargs.get('cex')
+    if hasattr(cex, "get_current_price") and inspect.isfunction(cex.get_current_price):
+        price = cex.get_current_price(token_name)
+        logger.info("Return {} price - {}: {}", cex.__name__, token_name, price)
+        return float(price)
 
-    url = f'https://data.gateapi.io/api2/1/ticker/{symbol}'
-    try:
-        response = requests.get(url)
-        return response.json()['last']
-    except requests.exceptions.HTTPError as e:
-        logger.error(response.content)
+
+@iter_cex
+def get_token_spot_candlesticks(
+        token_name: str,
+        interval='1d',
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: Optional[int] = None,
+        **kwargs
+):
+    cex = kwargs.get('cex')
+    if hasattr(cex, "get_spot_candlesticks") and inspect.isfunction(cex.get_spot_candlesticks):
+        df = cex.get_spot_candlesticks(
+            token_name, interval=interval, start_time=start_time, end_time=end_time, limit=limit
+        )
+        logger.info("Return {} price - {}: {} records", cex.__name__, token_name, len(df))
+        return df
 
 
 def get_onchain_price(token):
@@ -65,128 +83,11 @@ def get_onchain_price(token):
         logger.error("Request failed with status code: {status_code}".format(res.status_code))
 
 
-def get_token_price(symbol):
-    exchanges = ['binance', 'okx', 'gate']
-    for exchange in exchanges:
-        try:
-            price_function = globals()[f'get_{exchange}_price']
-            price = price_function(symbol)
-            logger.info(f"return {exchange} price - {symbol}:{price}")
-            return float(price)
-        except Exception as e:
-            logger.error(f"Error accessing {exchange}: {symbol} {e}")
-
-
-def get_binance_spot_candlesticks(symbol, interval='1d', limit=200):
-    """
-    :param symbol: upper token symbol such as "BTC"
-    :param interval: [1m/3m/5m/15m/30m/1h/2h/4h]
-    :param limit: at most 200
-    :return: dataframe of historical price
-    """
-    symbol = symbol.upper()
-    symbol = symbol if symbol[-4:] == "USDT" else symbol + "USDT"
-
-    api_url = 'https://api.binance.com/api/v3/klines'
-    params = {
-        'symbol': symbol,
-        'interval': interval,
-        'limit': limit
-    }
-
-    try:
-        response = requests.get(api_url, params=params)
-        data = response.json()
-
-        # 解析响应数据为DataFrame
-        df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time',
-                                         'quote_asset_volume', 'trades', 'taker_buy_base', 'taker_buy_quote', 'ignore'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        return df
-    except Exception as e:
-        logger.error(f"Error accessing binance: {e}")
-
-
-def get_okx_spot_candlesticks(symbol, interval='5m', limit=100):
-    """
-    :param symbol: upper token symbol such as "BTC"
-    :param interval: [1m/3m/5m/15m/30m/1H/2H/4H] HKT：[6H/12H/1D/1W/1M] UTC：[/6Hutc/12Hutc/1Dutc/1Wutc/1Mutc]
-    :param limit: at most 100
-    :return: dataframe of historical price
-    """
-    symbol = symbol.upper()
-    symbol = symbol[:-4] if symbol[-4:] == "USDT" else symbol
-    symbol = symbol[:-4] if symbol[-1] in ("-", "_") else symbol
-
-    if interval in ('1d', '7d', '30d'):
-        interval = interval.upper()
-
-    # 发起API请求
-    # url = f'api/v5/market/history-index-candles?instId={symbol}&bar={interval}&limit={limit}'
-    url = f'https://www.okex.com/api/v5/market/history-index-candles?instId={symbol}-USDT&bar={interval}&limit={limit}'
-    logger.info(url)
-    try:
-        response = requests.get(url)
-        data = response.json()['data']
-        df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'confirmed'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        return df
-    except Exception as e:
-        logger.error(f"Error accessing okx: {e}")
-
-
-def get_gate_spot_candlesticks(symbol, interval='1d', limit=100):
-    """
-    https://www.gate.io/docs/developers/apiv4/zh_CN/#%E5%B8%82%E5%9C%BA-k-%E7%BA%BF%E5%9B%BE
-    :param symbol: simple token symbol such as "BTC"
-    :param interval: [1m/5m/15m/30m/1h/4h/8h/1d/7d/30d]
-    :param limit: max 1000
-    :return: dataframe of token history price
-    """
-    symbol = symbol.upper()
-    symbol = symbol if symbol[-5:] == "USDT" else symbol + '_USDT'
-
-    headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
-    url = f'https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair={symbol}&interval={interval}&limit={limit}'
-    logger.info(url)
-    try:
-        response = requests.request('GET', url, headers=headers)
-        data = response.json()
-        df = pd.DataFrame(data, columns=[
-            'timestamp', 'quote_volume', 'close', 'high', 'low', 'open', 'base_volume', 'confirmed'
-        ])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-        return df
-    except Exception as e:
-        logger.error(f"Error accessing gate: {e}")
-
-
-def get_token_spot_candlesticks(symbol, interval='1d', limit=100):
-    exchanges = ['binance', 'okx', 'gate']
-    for exchange in exchanges:
-        try:
-            price_function = globals()[f'get_{exchange}_spot_candlesticks']
-            logger.info(price_function)
-            df = price_function(symbol, interval=interval, limit=limit)
-            print(len(df))
-            if len(df) > 0:
-                return df
-        except Exception as e:
-            logger.error(f"Error accessing {exchange}: {e}")
-
-
 if __name__ == "__main__":
-    # p = get_binance_price("BTCUSDT")
-    # p = get_okx_price("gpt")
-    # p = get_gate_price("cpool")
+    p = get_token_price("navx")
+    print(p)
 
-    # p = get_token_price("cpool")
-
-    # p = get_binance_spot_candlesticks('gpt')
-    # p = get_okx_spot_candlesticks('gpt')
-    p = get_token_spot_candlesticks('gpt')
+    p = get_token_spot_candlesticks('navx')
     print(p.head(5))
 
     # p = get_onchain_price('0x2B5D9ADea07B590b638FFc165792b2C610EdA649')
-    # p = get_okx_historical_data("BTC", interval='1H')
-    # print(p)

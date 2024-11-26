@@ -14,17 +14,17 @@ def get_current_price(token_name: str):
     token_name = token_name[:-4] if token_name[-4:] == "USDT" else token_name
 
     url = f"https://www.okx.com/api/v5/market/ticker?instId={token_name}-USDT"
-    try:
-        response = requests.get(url)
-        data = response.json()
+    response = requests.get(url)
+    data = response.json()
+    if data.get('code') == 0:
         return data["data"][0]["last"]
-    except requests.exceptions.HTTPError as e:
-        logger.error("ERROR Access OKX Ticker: {}", e)
+    else:
+        raise Exception(data['msg'])
 
 
 def get_spot_candlesticks(
     token_name: str,
-    interval='1D',
+    interval='1d',
     start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
     limit: Optional[int] = None
@@ -42,6 +42,9 @@ def get_spot_candlesticks(
     symbol = symbol[:-4] if symbol[-4:] == "USDT" else symbol
     symbol = symbol[:-4] if symbol[-1] in ("-", "_") else symbol
 
+    if interval not in ('1m', '3m', '5m', '15m', '30m'):
+        interval = interval.upper()
+
     url = f'https://www.okx.com/api/v5/market/history-index-candles'
     params = {
         'instId': symbol + '-USDT',
@@ -52,21 +55,21 @@ def get_spot_candlesticks(
         params['after'] = str(1000 * int(end_time.timestamp()))
     if limit is not None:
         params['limit'] = 100 if limit > 100 or limit < 0 else limit
-    logger.info(params)
-    try:
-        response = requests.get(url, params=params)
+    response = requests.get(url, params=params)
+    if response.json()['code'] == '0':
         data = response.json()['data']
         df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'confirmed'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
-    except Exception as e:
-        logger.error(f"Error accessing okx: {e}")
+    else:
+        logger.error(response.json()['msg'])
+        raise Exception(response.json()['msg'])
 
 
 if __name__ == "__main__":
     print(get_current_price("BTCUSDT"))
     print(get_spot_candlesticks(
-        "BTC",
+        "navx",
         interval='1D',
         start_time=datetime(2024, 11, 1),
         end_time=datetime(2024, 11, 10)
