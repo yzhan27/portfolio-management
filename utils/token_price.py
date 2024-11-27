@@ -26,7 +26,7 @@ def iter_cex(fn):
             file_path = os.path.join(cex_dir, f"{module_name}.py")
             if os.path.exists(file_path):
                 try:
-                    module_path = f'cex.{module_name}'
+                    module_path = f'utils.cex.{module_name}'
                     module = importlib.import_module(module_path)
                     kwargs['cex'] = module
                     return fn(*args, **kwargs)
