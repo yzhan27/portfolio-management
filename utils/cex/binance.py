@@ -54,7 +54,7 @@ def get_spot_candlesticks(
 
     response = requests.get(api_url, params=params)
     data = response.json()
-    if data['msg'] is not None:
+    if isinstance(data, dict):
         logger.error(data['msg'])
         raise Exception(data['msg'])
 
@@ -66,9 +66,9 @@ def get_spot_candlesticks(
 
 
 if __name__ == "__main__":
-    print(get_current_price("gpt"))
+    print(get_current_price("btc"))
     print(get_spot_candlesticks(
-        "gpt",
+        "mnt",
         start_time=datetime(2022, 11, 1),
         end_time=datetime(2022, 11, 10)
     ))

@@ -38,7 +38,7 @@ class Pair(object):
             pair_df[col] = pair_df[col + '_x'] / pair_df[col + '_y'] * pow(10, scale_k)
         pair_df.set_index('timestamp', inplace=True)
         pair_df = pair_df.loc[:, ['open', 'high', 'low', 'close']]
-        return pair_df
+        return pair_df.sort_values(by='timestamp')
 
 
 if __name__ == "__main__":
