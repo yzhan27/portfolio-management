@@ -16,7 +16,7 @@ def get_current_price(token_name: str):
     url = f"https://www.okx.com/api/v5/market/ticker?instId={token_name}-USDT"
     response = requests.get(url)
     data = response.json()
-    if data.get('code') == 0:
+    if data.get('code') == '0':
         return data["data"][0]["last"]
     else:
         raise Exception(data['msg'])
@@ -67,9 +67,9 @@ def get_spot_candlesticks(
 
 
 if __name__ == "__main__":
-    print(get_current_price("BTCUSDT"))
+    print(get_current_price("okb"))
     print(get_spot_candlesticks(
-        "navx",
+        "okb",
         interval='1D',
         start_time=datetime(2024, 11, 1),
         end_time=datetime(2024, 11, 10)
