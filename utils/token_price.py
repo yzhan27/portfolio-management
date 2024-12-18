@@ -12,6 +12,7 @@ from datetime import datetime
 class PriceSource(Enum):
     BINANCE = "binance"
     OKX = "okx"
+    BITGET = "bitget"
     GATE = "gate"
 
 
@@ -84,7 +85,7 @@ def get_onchain_price(token):
 
 
 if __name__ == "__main__":
-    p = get_token_price("navx")
+    p = get_token_price("zrc")
     print(p)
 
     p = get_token_spot_candlesticks('navx')
