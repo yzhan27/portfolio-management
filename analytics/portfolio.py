@@ -1,8 +1,6 @@
-import sys
 import pandas as pd
 from loguru import logger
 
-sys.path.append('./')
 from utils.token_price import get_token_price
 
 
