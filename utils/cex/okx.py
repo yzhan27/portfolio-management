@@ -59,6 +59,7 @@ def get_spot_candlesticks(
     if response.json()['code'] == '0':
         data = response.json()['data']
         df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'confirmed'])
+        df['timestamp'] = pd.to_numeric(df['timestamp'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
     else:
