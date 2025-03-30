@@ -1,0 +1,6 @@
+web3==6.11.1
+eth_abi==4.2.1
+loguru==0.7.2
+python-dotenv==1.0.0
+requests==2.31.0
+decimal==1.70
